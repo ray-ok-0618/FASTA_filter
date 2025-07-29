@@ -28,7 +28,7 @@ def load_fasta(file_content):
     return sequences
 
 def is_match(base1, base2):
-    return bool(IUPAC_TABLE.get(base1, set()) & IUPAC_TABLE.get(base2, set()))
+    return bool(IUPAC_TABLE.get(base1.upper(), set()) & IUPAC_TABLE.get(base2.upper(), set()))
 
 def calc_identity(seq, ref):
     match = 0
