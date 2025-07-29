@@ -1,80 +1,77 @@
 import streamlit as st
-import re
 
-# --- 混合塩基定義 ---
-IUPAC_CODES = {
-    'A': {'A'}, 'T': {'T'}, 'G': {'G'}, 'C': {'C'},
-    'R': {'A', 'G'}, 'Y': {'C', 'T'}, 'S': {'G', 'C'}, 'W': {'A', 'T'},
-    'K': {'G', 'T'}, 'M': {'A', 'C'}, 'B': {'C', 'G', 'T'}, 'D': {'A', 'G', 'T'},
-    'H': {'A', 'C', 'T'}, 'V': {'A', 'C', 'G'}, 'N': {'A', 'T', 'G', 'C'},
+def parse_fasta(file):
+    sequences = {}
+    current_name = None
+    for line in file:
+        line = line.strip()
+        if line.startswith('>'):
+            current_name = line[1:]
+            sequences[current_name] = ''
+        elif current_name:
+            sequences[current_name] += line.upper()
+    return sequences
+
+# IUPAC対応
+IUPAC = {
+    'A': {'A'}, 'C': {'C'}, 'G': {'G'}, 'T': {'T'},
+    'R': {'A', 'G'}, 'Y': {'C', 'T'}, 'S': {'G', 'C'},
+    'W': {'A', 'T'}, 'K': {'G', 'T'}, 'M': {'A', 'C'},
+    'B': {'C', 'G', 'T'}, 'D': {'A', 'G', 'T'},
+    'H': {'A', 'C', 'T'}, 'V': {'A', 'C', 'G'},
+    'N': {'A', 'C', 'G', 'T'},
     '-': set()
 }
 
-# --- FASTA/テキスト読み込み ---
-def read_fasta_or_txt(file):
-    content = file.read().decode('utf-8')
-    entries = {}
-    current_header = None
-    current_seq = []
-    for line in content.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith('>'):
-            if current_header:
-                entries[current_header] = ''.join(current_seq)
-            current_header = line
-            current_seq = []
-        else:
-            current_seq.append(line)
-    if current_header:
-        entries[current_header] = ''.join(current_seq)
-    return entries
+def match(base1, base2):
+    return bool(IUPAC.get(base1, {base1}) & IUPAC.get(base2, {base2}))
 
-# --- 一致判定（混合塩基対応、ハイフン無視） ---
-def calculate_identity(seq, ref):
-    match = 0
+def calc_identity(seq1, seq2):
+    matches = 0
     total = 0
-    for a, b in zip(seq, ref):
+    for a, b in zip(seq1, seq2):
         if a == '-' or b == '-':
             continue
-        if IUPAC_CODES.get(a.upper(), set()) & IUPAC_CODES.get(b.upper(), set()):
-            match += 1
         total += 1
-    return match / total if total > 0 else 0
+        if match(a, b):
+            matches += 1
+    return matches / total if total > 0 else 0
 
-# --- Streamlit UI ---
-st.title("配列一致率によるフィルター（混合塩基対応）")
+def find_match_window(full_seq, ref_seq, threshold):
+    ref_len = len(ref_seq)
+    best_score = 0
+    best_result = None
+    for i in range(len(full_seq) - ref_len + 1):
+        window = full_seq[i:i+ref_len]
+        score = calc_identity(window, ref_seq)
+        if score >= threshold and score > best_score:
+            best_result = (i, window, score)
+            best_score = score
+    return best_result
 
-uploaded_file = st.file_uploader("FASTA またはテキストファイルをアップロード", type=["fasta", "fa", "txt"])
-ref_seq = st.text_input("参照配列（例：AAAGTG）", value="AAAGTG")
+# Streamlit UI
+st.title("FASTAフィルタリングツール（スライド比較 & IUPAC対応）")
+
+uploaded = st.file_uploader("FASTAまたはTXTファイルをアップロード", type=["fasta", "fa", "txt"])
+ref_seq = st.text_input("参照配列（例：AAAGTG）").upper()
 threshold = st.slider("一致率の閾値（％）", 50, 100, 90) / 100
 
-if uploaded_file and ref_seq:
-    try:
-        st.info("ファイルを読み込み中...")
-        records = read_fasta_or_txt(uploaded_file)
-        st.success(f"{len(records)} 配列を読み込みました")
+if uploaded and ref_seq:
+    fasta_text = uploaded.read().decode('utf-8').splitlines()
+    seqs = parse_fasta(fasta_text)
 
-        matched = {}
-        for header, seq in records.items():
-            identity = calculate_identity(seq, ref_seq)
-            if identity >= threshold:
-                matched[header] = seq
+    matched = {}
+    for name, seq in seqs.items():
+        result = find_match_window(seq, ref_seq, threshold)
+        if result:
+            matched[name] = seq
 
-        st.write(f"一致率 {threshold*100:.1f}% 以上の配列数: {len(matched)}")
+    st.markdown(f"###  {len(matched)} 件の一致した配列が見つかりました")
 
-        if matched:
-            st.download_button(
-                label="一致配列をダウンロード",
-                data='\n'.join(f"{h}\n{matched[h]}" for h in matched),
-                file_name="matched_sequences.fasta",
-                mime="text/plain"
-            )
-            for h, s in matched.items():
-                st.text(f"{h}\n{s}")
-        else:
-            st.warning("条件に一致する配列は見つかりませんでした。")
-
-    except Exception as e:
-        st.error(f"エラー: {e}")
+    if matched:
+        output = ''
+        for name, seq in matched.items():
+            output += f">{name}\n{seq}\n"
+        st.download_button(" FASTAをダウンロード", output, file_name="filtered.fasta")
+    else:
+        st.warning("条件に合致する配列が見つかりませんでした。")
