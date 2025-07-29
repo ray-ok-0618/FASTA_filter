@@ -55,7 +55,7 @@ def filter_sequences(sequences, ref_seq, threshold):
 st.title("FASTAフィルタリングツール")
 
 uploaded_file = st.file_uploader("FASTA形式またはTXT形式のファイルをアップロード", type=["fasta", "fa", "txt"])
-ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=1000).upper()
+ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=10000).upper()
 threshold = st.slider("一致率の閾値（%）", 50, 100, 90)
 
 if uploaded_file and ref_seq:
