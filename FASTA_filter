@@ -1,0 +1,80 @@
+import streamlit as st
+import re
+
+# --- 混合塩基定義 ---
+IUPAC_CODES = {
+    'A': {'A'}, 'T': {'T'}, 'G': {'G'}, 'C': {'C'},
+    'R': {'A', 'G'}, 'Y': {'C', 'T'}, 'S': {'G', 'C'}, 'W': {'A', 'T'},
+    'K': {'G', 'T'}, 'M': {'A', 'C'}, 'B': {'C', 'G', 'T'}, 'D': {'A', 'G', 'T'},
+    'H': {'A', 'C', 'T'}, 'V': {'A', 'C', 'G'}, 'N': {'A', 'T', 'G', 'C'},
+    '-': set()
+}
+
+# --- FASTA/テキスト読み込み ---
+def read_fasta_or_txt(file):
+    content = file.read().decode('utf-8')
+    entries = {}
+    current_header = None
+    current_seq = []
+    for line in content.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('>'):
+            if current_header:
+                entries[current_header] = ''.join(current_seq)
+            current_header = line
+            current_seq = []
+        else:
+            current_seq.append(line)
+    if current_header:
+        entries[current_header] = ''.join(current_seq)
+    return entries
+
+# --- 一致判定（混合塩基対応、ハイフン無視） ---
+def calculate_identity(seq, ref):
+    match = 0
+    total = 0
+    for a, b in zip(seq, ref):
+        if a == '-' or b == '-':
+            continue
+        if IUPAC_CODES.get(a.upper(), set()) & IUPAC_CODES.get(b.upper(), set()):
+            match += 1
+        total += 1
+    return match / total if total > 0 else 0
+
+# --- Streamlit UI ---
+st.title("配列一致率によるフィルター（混合塩基対応）")
+
+uploaded_file = st.file_uploader("FASTA またはテキストファイルをアップロード", type=["fasta", "fa", "txt"])
+ref_seq = st.text_input("参照配列（例：AAAGTG）", value="AAAGTG")
+threshold = st.slider("一致率の閾値（％）", 50, 100, 90) / 100
+
+if uploaded_file and ref_seq:
+    try:
+        st.info("ファイルを読み込み中...")
+        records = read_fasta_or_txt(uploaded_file)
+        st.success(f"{len(records)} 配列を読み込みました")
+
+        matched = {}
+        for header, seq in records.items():
+            identity = calculate_identity(seq, ref_seq)
+            if identity >= threshold:
+                matched[header] = seq
+
+        st.write(f"一致率 {threshold*100:.1f}% 以上の配列数: {len(matched)}")
+
+        if matched:
+            st.download_button(
+                label="一致配列をダウンロード",
+                data='\n'.join(f"{h}\n{matched[h]}" for h in matched),
+                file_name="matched_sequences.fasta",
+                mime="text/plain"
+            )
+            for h, s in matched.items():
+                st.text(f"{h}\n{s}")
+        else:
+            st.warning("条件に一致する配列は見つかりませんでした。")
+
+    except Exception as e:
+        st.error(f"エラー: {e}")
