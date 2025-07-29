@@ -41,16 +41,17 @@ def calc_identity(seq, ref):
             match += 1
     return match / total if total > 0 else 0
 
-def filter_sequences(sequences, ref_seq, threshold):
+def filter_sequences_partial(sequences, ref_seq, threshold):
     filtered = {}
     for id, seq in sequences.items():
         for i in range(len(seq) - len(ref_seq) + 1):
             window = seq[i:i+len(ref_seq)]
             identity = calc_identity(window, ref_seq)
             if identity >= threshold:
-                filtered[id] = seq
+                filtered[id] = window  # 部分配列のみ保存
                 break
     return filtered
+
 
 st.title("FASTAフィルタリングツール")
 
@@ -63,12 +64,12 @@ if uploaded_file and ref_seq:
     sequences = load_fasta(content)
     st.write(f"読み込んだサンプル数: {len(sequences)}")
 
-    filtered = filter_sequences(sequences, ref_seq, threshold / 100)
+    filtered = filter_sequences_partial(sequences, ref_seq, threshold / 100)
     st.write(f"閾値以上一致したサンプル数: {len(filtered)}")
 
     if filtered:
-        st.success(f"{len(filtered)} 件の一致サンプルが見つかりました")
+        st.success(f"{len(filtered)} 件の一致部分配列が見つかりました")
         output = '\n'.join(f">{id}\n{seq}" for id, seq in filtered.items())
-        st.download_button("結果をダウンロード", output, file_name="filtered.fasta")
+        st.download_button("結果をダウンロード", output, file_name="filtered_partial.fasta")
     else:
-        st.warning("一致したサンプルが見つかりませんでした")
+        st.warning("一致した部分配列が見つかりませんでした")
