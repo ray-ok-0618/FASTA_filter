@@ -63,9 +63,13 @@ if uploaded_file and ref_seq:
     content = uploaded_file.read().decode('utf-8')
     sequences = load_fasta(content)
     st.write(f"読み込んだサンプル数: {len(sequences)}")
+    
+    with st.status("処理中...", expanded=True) as status:
+    # 処理中の内容など表示したければここに書く  
+        filtered = filter_sequences_partial(sequences, ref_seq, threshold / 100)
+        status.update(label="完了しました", state="complete")
 
-    filtered = filter_sequences_partial(sequences, ref_seq, threshold / 100)
-    st.write(f"閾値以上一致したサンプル数: {len(filtered)}")
+        st.write(f"閾値以上一致したサンプル数: {len(filtered)}")
 
     if filtered:
         st.success(f"{len(filtered)} 件の一致部分配列が見つかりました")
