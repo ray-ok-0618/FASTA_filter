@@ -1,6 +1,7 @@
 # FASTA_filter.py
 import streamlit as st
 import os
+import time
 
 # --- 混合塩基の一致判定マップ（IUPACコード対応） ---
 IUPAC_TABLE = {
