@@ -60,12 +60,11 @@ ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=10000
 threshold = st.slider("一致率の閾値（%）", 50, 100, 90)
 
 if uploaded_file and ref_seq:
-    content = uploaded_file.read().decode('utf-8')
-    sequences = load_fasta(content)
-    st.write(f"読み込んだサンプル数: {len(sequences)}")
-    
     with st.status("処理中...", expanded=True) as status:
-    # 処理中の内容など表示したければここに書く
+        # 処理中の内容など表示したければここに書く
+        content = uploaded_file.read().decode('utf-8')
+        sequences = load_fasta(content)
+        st.write(f"読み込んだサンプル数: {len(sequences)}")
         filtered = filter_sequences_partial(sequences, ref_seq, threshold / 100)
      
         if filtered:
