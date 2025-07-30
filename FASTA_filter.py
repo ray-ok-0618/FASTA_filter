@@ -44,7 +44,9 @@ def calc_identity(seq, ref):
 def filter_sequences_partial(sequences, ref_seq, threshold):
     filtered = {}
     total = len(sequences)
-    progress_bar = st.progress(0)
+    progress_placeholder = st.empty()  # プログレスバーの描画スペース
+    text_placeholder = st.empty()      # 進捗テキストの描画スペース
+    progress_bar = progress_placeholder.progress(0)
     
     for idx, (id, seq) in enumerate(sequences.items()):
         for i in range(len(seq) - len(ref_seq) + 1):
@@ -53,11 +55,17 @@ def filter_sequences_partial(sequences, ref_seq, threshold):
             if identity >= threshold:
                 filtered[id] = window  # 部分配列のみ保存
                 break
-        progress_bar.progress((idx + 1) / total)
+                
+        progress = (idx + 1) / total
+        progress_bar.progress(progress)
+        text_placeholder.text(f"{idx+1} / {total} 件処理中...")
+
+        time.sleep(0.01)
+        
     return filtered
 
 
-st.title("FASTAフィルタリングツール")
+st.title("FASTA フィルタリングツール")
 
 uploaded_file = st.file_uploader("FASTA形式またはTXT形式のファイルをアップロード", type=["fasta", "fa", "txt"])
 ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=10000).upper()
