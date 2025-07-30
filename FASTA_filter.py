@@ -65,7 +65,7 @@ def filter_sequences_partial(sequences, ref_seq, threshold):
     return filtered
 
 
-st.title("FASTA フィルタリングツール")
+st.title("FASTAフィルタツール")
 
 uploaded_file = st.file_uploader("FASTA形式またはTXT形式のファイルをアップロード", type=["fasta", "fa", "txt"])
 ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=10000).upper()
