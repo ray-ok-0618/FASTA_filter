@@ -43,13 +43,17 @@ def calc_identity(seq, ref):
 
 def filter_sequences_partial(sequences, ref_seq, threshold):
     filtered = {}
-    for id, seq in sequences.items():
+    total = len(sequences)
+    progress_bar = st.progress(0)
+    
+    for idx, (id, seq) in enumerate(sequences.items()):
         for i in range(len(seq) - len(ref_seq) + 1):
             window = seq[i:i+len(ref_seq)]
             identity = calc_identity(window, ref_seq)
             if identity >= threshold:
                 filtered[id] = window  # 部分配列のみ保存
                 break
+        progress_bar.progress((idx + 1) / total)
     return filtered
 
 
