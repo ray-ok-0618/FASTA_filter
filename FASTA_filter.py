@@ -71,10 +71,10 @@ if uploaded_file and ref_seq:
 
         st.write(f"閾値以上一致したサンプル数: {len(filtered)}")
 
-    if filtered:
-        st.success(f"{len(filtered)} 件の一致部分配列が見つかりました")
-        output = '\n'.join(f">{id}\n{seq}" for id, seq in filtered.items())
-        st.text(output)
-        st.download_button("結果をダウンロード", output, file_name="filtered_partial.fasta")
-    else:
-        st.warning("一致した部分配列が見つかりませんでした")
+        if filtered:
+            st.success(f"{len(filtered)} 件の一致部分配列が見つかりました")
+            output = '\n'.join(f">{id}\n{seq}" for id, seq in filtered.items())
+            st.text(output)
+            st.download_button("結果をダウンロード", output, file_name="filtered_partial.fasta")
+        else:
+            st.warning("一致した部分配列が見つかりませんでした")
