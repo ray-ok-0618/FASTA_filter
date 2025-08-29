@@ -1,7 +1,5 @@
-# FASTA_filter.py
 import streamlit as st
 import os
-import time
 
 # --- 混合塩基の一致判定マップ（IUPACコード対応） ---
 IUPAC_TABLE = {
@@ -38,6 +36,8 @@ def calc_identity(seq, ref):
         if a == '-' or b == '-':
             continue
         total += 1
+        if a == 'N':
+            continue   
         if is_match(a, b):
             match += 1
     return match / total if total > 0 else 0
@@ -45,9 +45,7 @@ def calc_identity(seq, ref):
 def filter_sequences_partial(sequences, ref_seq, threshold):
     filtered = {}
     total = len(sequences)
-    progress_placeholder = st.empty()  # プログレスバーの描画スペース
-    text_placeholder = st.empty()      # 進捗テキストの描画スペース
-    progress_bar = progress_placeholder.progress(0)
+    progress_bar = st.progress(0)
     
     for idx, (id, seq) in enumerate(sequences.items()):
         for i in range(len(seq) - len(ref_seq) + 1):
@@ -56,20 +54,14 @@ def filter_sequences_partial(sequences, ref_seq, threshold):
             if identity >= threshold:
                 filtered[id] = window  # 部分配列のみ保存
                 break
-                
-        progress = (idx + 1) / total
-        progress_bar.progress(progress)
-        text_placeholder.text(f"{idx+1} / {total} 件処理中...")
-
-        time.sleep(0.01)
-        
+        progress_bar.progress((idx + 1) / total)
     return filtered
 
 
-st.title("FASTAフィルタツール")
+st.title("FASTAフィルタリングツール")
 
 uploaded_file = st.file_uploader("FASTA形式またはTXT形式のファイルをアップロード", type=["fasta", "fa", "txt"])
-ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=10000).upper()
+ref_seq = st.text_input("参照配列（AGCTなど）を入力", max_chars=10000).upper().strip().replace(' ', '')
 threshold = st.slider("一致率の閾値（%）", 50, 100, 90)
 
 if uploaded_file and ref_seq:
@@ -78,11 +70,13 @@ if uploaded_file and ref_seq:
         content = uploaded_file.read().decode('utf-8')
         sequences = load_fasta(content)
         st.write(f"読み込んだサンプル数: {len(sequences)}")
+        st.write(f'read seq: {ref_seq}')
         filtered = filter_sequences_partial(sequences, ref_seq, threshold / 100)
      
         if filtered:
             st.success(f"{len(filtered)} 件の一致部分配列が見つかりました")
-            output = '\n'.join(f">{id}\n{seq}" for id, seq in filtered.items())           
+            output = '\n'.join(f">{id}\n{seq}" for id, seq in filtered.items())
+            st.text(output)            
             st.download_button("結果をダウンロード", output, file_name="filtered_partial.fasta")
         else:
             st.warning("一致した部分配列が見つかりませんでした")
